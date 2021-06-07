@@ -1,1 +1,64 @@
-insert the way how we get the answer
+Dans un premier temps nous avons etudier le comportement du binaire
+
+avec un ou plusieurs argv le binaire renvois un "No !"
+
+avec 0 argv on a un segmentation fault core dumped
+
+En utilisant disas main via gdb
+
+on obtien
+
+   0x08048ec0 <+0>:	push   %ebp
+   0x08048ec1 <+1>:	mov    %esp,%ebp
+   0x08048ec3 <+3>:	and    $0xfffffff0,%esp
+   0x08048ec6 <+6>:	sub    $0x20,%esp
+   0x08048ec9 <+9>:	mov    0xc(%ebp),%eax
+   0x08048ecc <+12>:	add    $0x4,%eax
+   0x08048ecf <+15>:	mov    (%eax),%eax
+   0x08048ed1 <+17>:	mov    %eax,(%esp)
+   0x08048ed4 <+20>:	call   0x8049710 <atoi>
+   0x08048ed9 <+25>:	cmp    $0x1a7,%eax
+   0x08048ede <+30>:	jne    0x8048f58 <main+152>
+   0x08048ee0 <+32>:	movl   $0x80c5348,(%esp)
+   0x08048ee7 <+39>:	call   0x8050bf0 <strdup>
+   0x08048eec <+44>:	mov    %eax,0x10(%esp)
+   0x08048ef0 <+48>:	movl   $0x0,0x14(%esp)
+   0x08048ef8 <+56>:	call   0x8054680 <getegid>
+   0x08048efd <+61>:	mov    %eax,0x1c(%esp)
+   0x08048f01 <+65>:	call   0x8054670 <geteuid>
+   0x08048f06 <+70>:	mov    %eax,0x18(%esp)
+   0x08048f0a <+74>:	mov    0x1c(%esp),%eax
+   0x08048f0e <+78>:	mov    %eax,0x8(%esp)
+   0x08048f12 <+82>:	mov    0x1c(%esp),%eax
+   0x08048f16 <+86>:	mov    %eax,0x4(%esp)
+   0x08048f1a <+90>:	mov    0x1c(%esp),%eax
+   0x08048f1e <+94>:	mov    %eax,(%esp)
+   0x08048f21 <+97>:	call   0x8054700 <setresgid>
+   0x08048f26 <+102>:	mov    0x18(%esp),%eax
+   0x08048f2a <+106>:	mov    %eax,0x8(%esp)
+   0x08048f2e <+110>:	mov    0x18(%esp),%eax
+   0x08048f32 <+114>:	mov    %eax,0x4(%esp)
+   0x08048f36 <+118>:	mov    0x18(%esp),%eax
+   0x08048f3a <+122>:	mov    %eax,(%esp)
+   0x08048f3d <+125>:	call   0x8054690 <setresuid>
+   0x08048f42 <+130>:	lea    0x10(%esp),%eax
+   0x08048f46 <+134>:	mov    %eax,0x4(%esp)
+
+
+Ce qui retien notre attention apres relecture c'est :
+0x08048ed9 <+25>:	cmp    $0x1a7,%eax ; cette ligne utilise cmp. C'est une instruction qui permet de comparer la sources (eax) avec la destination (0x1a70)
+
+Nous voulions donc reproduire ce cas de figure, on re execute le binaire avec 0x1a7 comme argv. On obtien encore un No !
+
+Apres relecture on remarque le call de la function atoi
+
+0x08048ed4 <+20>:	call   0x8049710 <atoi>
+
+C'est la ligne juste au dessus du cmp. De ce fait nous deduison que l'atoi pris 0x1a7 comme paramettre lors de la cmp si on y reflechis avec une approche du langage C
+Cependant 0x1a7 c'est de l'hexadecimal. Donc on essaye de le convertir en decimal puisque apres reflexion c'est le contenant de argv passer au binaire. La convertion donne 423.
+
+on execute enfin le ./level0 423
+
+un bash s'ouvre. Se referent au sujet en faisant un cat /home/user/level1/.pass on obtient 1fe8a524fa4bec01ca4ea2a869af2a02260d4a7d5fe7e7c24d8617e6dca12d3a
+
+Cependant en faisant un whoami on obtient level1 ce qui prouve que de part l'exploitation de cette faille on a pu cree une elevation de privilege car le bash est executer par level0 dont le proprio est level1
