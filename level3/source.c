@@ -5,7 +5,7 @@ int		v(void)
 	char *format
 	FILE *stream
 	fgets(format, size, stdin);
-	printf(buffer);
+	printf(format);
 	if (s[size] == 64)
 	{
 		fwrite("Wait what?!\n", 12, 1, stdout);
