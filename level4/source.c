@@ -1,3 +1,4 @@
+#include<stdio.h>
 void p(const char *format)
 {
 	printf(format);

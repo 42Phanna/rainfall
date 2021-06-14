@@ -1,3 +1,4 @@
+#include<stdio.h>
 int		v(void)
 {
 	int size = 512;
