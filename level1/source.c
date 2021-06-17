@@ -2,7 +2,11 @@
 
 void	run(void)
 {
-	fwrite("Good... Wait what?", 1, 19, stdout);
+	FILE *stream = stdout;
+	const void *ptr =  "Good... Wait what?\n";
+	size_t nitems = 19;
+	size_t size = 1;
+	fwrite(ptr, size, nitems, stream);
 	system("/bin/sh");
 }
 
