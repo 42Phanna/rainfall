@@ -90,9 +90,9 @@ gs             0x33	51
 
 eip est l'address de retour mais la elle nous donne 0x0
 
-L'address est donc proteger
+L'address est et on le vois avec le cmp dans le main une fois disas.
 
-Cependant apres reflexion il n'y pas que la stack dans la memoire mais aussi la heap. Plus haut dans  @sym.p il y avait le call strdup. strdup utilise malloc donc alloue sur la heap. La heap est contenue dans eax. Eax = rax mais en 32 bits
+eax est par ailleurs appeller par strdup. Sachant que strdup utilise malloc, cela alloue de la memoire. On peut donc utiliser l'addresse de eax
 
 On convertie en little endian l'addresse retourner. 0x804a008 devient donc \x08\xa0\x04\x08 pour convertir en little endian les deux derniers chiffre devienent le premier carac et ainsi de suite ce qui nous donne bien \x08\xa0\x04\x08
 
