@@ -8,18 +8,20 @@ voir disas_analys pour voir ce que contient le disas du main
 
 
 Ce qui retien notre attention apres relecture c'est :
-0x08048ed9 <+25>:	cmp    $0x1a7,%eax ; cette ligne utilise cmp. C'est une instruction qui permet de comparer la sources (eax) avec la destination (0x1a70)
+0x08048ed9 <+25>:	cmp    $0x1a7,%eax ;
+cette ligne utilise cmp. C'est une instruction qui permet de comparer la sources (eax) avec la destination (0x1a70)
 
-Nous voulions donc reproduire ce cas de figure, on re execute le binaire avec 0x1a7 comme argv. On obtien encore un No !
+Nous voulions donc reproduire ce cas de figure car le programme peut prendre un argument
+on re execute le binaire avec 0x1a7 comme argv. On obtien encore un No !
 
 Apres relecture on remarque le call de la function atoi
 
 0x08048ed4 <+20>:	call   0x8049710 <atoi>
 
-C'est la ligne juste au dessus du cmp. De ce fait nous deduison que l'atoi pris 0x1a7 comme paramettre lors de la cmp si on y reflechis avec une approche du langage C
-Cependant 0x1a7 c'est de l'hexadecimal. Donc on essaye de le convertir en decimal puisque apres reflexion c'est le contenant de argv passer au binaire. La convertion donne 423.
+C'est la ligne juste au dessus du cmp. atoi vas checker notre arg[1]. Donc comme atoi convertie un ponteur sur char en int.
+On va donc essayer avec une convertion de notre valeur en hexa en decimal ce qui nous donne 423
 
-on execute enfin le ./level0 423
+./level0 423
 
 un bash s'ouvre. Se referent au sujet en faisant un cat /home/user/level1/.pass on obtient 1fe8a524fa4bec01ca4ea2a869af2a02260d4a7d5fe7e7c24d8617e6dca12d3a
 
